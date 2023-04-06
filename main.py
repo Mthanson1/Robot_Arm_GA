@@ -36,7 +36,8 @@ def tor(n, d):
     if not checkvalid(n) or not xreq(n, x, d) or not yreq(n, y, d):
         return 10 ** 100  # assign large cost to signify bad result
     # apply general torque equation:
-    return -(2 * math.cos(a) * n[0] ** 2 + 2 * math.cos(a) *
+    g = 9.813
+    return -g * (2 * math.cos(a) * n[0] ** 2 + 2 * math.cos(a) *
              n[0] * n[1] + math.cos(b) * n[1] ** 2
              + math.cos(a) * n[0] * n[2] + math.cos(b)
              * n[1] * n[2] + 0.5 * math.cos(c) * n[2] ** 2
