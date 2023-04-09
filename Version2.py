@@ -16,27 +16,17 @@ def tor(n, d):
     # check which scenario we are evaluating
     if d == 1:
         c = 0
-        a = n[3]
-        b = n[4]
-        x = 0.5
-        y = 0.5
     elif d == 2:
         c = math.radians(45)
-        a = n[5]
-        b = n[6]
-        x = 0.2
-        y = 0.6
     else:
         c = math.radians(-60)
-        a = n[7]
-        b = n[8]
-        x = 0.75
-        y = 0.1
+
     # We check to ensure the lengths and angles are within the error for the current position
-    if not checkvalid(n) or not xreq(n, x, d) or not yreq(n, y, d):
+    if not checkvalid(n):
         return 10 ** 100  # assign large cost to signify bad result
+    a, b = calcAngle(n, c)
     # apply general torque equation:
-    g = 9.813
+    g = 9.8
     return -g * (2 * math.cos(a) * n[0] ** 2 + 2 * math.cos(a) *
              n[0] * n[1] + math.cos(b) * n[1] ** 2
              + math.cos(a) * n[0] * n[2] + math.cos(b)
@@ -53,47 +43,35 @@ def torque(n):
 def checkvalid(n):
     """ensures that the sum of the lengths of the links is greater than or equal to one to ensure that the arm has a 1m
     reach minimum"""
-    return n[0] + n[1] + n[2] >= 1
+    l = n[0] + n[1]
+    return l + n[2] >= 1 and l >= math.sqrt(0.5**2 + (0.5-n[2])**2) \
+        and l >= math.sqrt((0.6-n[2]*math.sin(math.radians(45)))**2 + (0.2-n[2]*math.cos(math.radians(45)))**2) \
+        and l >= math.sqrt((0.75-n[2]*math.cos(math.radians(-60)))**2 + (0.1+n[2]*math.sin(math.radians(-60)))**2)
 
 
-def xreq(n, x, d):
-    """verifies that the current robot can reach the required x position"""
-    # identify scenario
-    if d == 1:
-        c = 0
-        a = n[3]
-        b = n[4]
-    elif d == 2:
-        c = math.radians(45)
-        a = n[5]
-        b = n[6]
-    else:
-        c = math.radians(-60)
-        a = n[7]
-        b = n[8]
-    # calculate sum of x components
-    x_cur = n[0] * math.cos(a) + n[1] * math.cos(b) + n[2] * math.cos(c)
-    return abs(x_cur - x) <= 0.01  # evaluate with 0.01m tolerance (exact value will likely be impossible)
-
-
-def yreq(n, y, d):
-    """verifies that the current robot can reach the required y position"""
-    # identify scenario
-    if d == 1:
-        c = 0
-        a = n[3]
-        b = n[4]
-    elif d == 2:
-        c = math.radians(45)
-        a = n[5]
-        b = n[6]
-    else:
-        c = math.radians(-60)
-        a = n[7]
-        b = n[8]
-    # calculate sum of y components
-    y_cur = n[0] * math.sin(a) + n[1] * math.sin(b) + n[2] * math.sin(c)
-    return abs(y_cur - y) <= 0.01  # evaluate with 0.01m tolerance (exact value will likely be impossible)
+def calcAngle(n, c):
+    if c == 0:
+        x1 = 0.5
+        y1 = 0.5
+    elif c == math.radians(45):
+        x1 = 0.2
+        y1 = 0.6
+    elif c == math.radians(-60):
+        x1 = 0.75
+        y1 = 0.1
+    x2 = x1 - n[2]*math.cos(c)
+    y2 = y1 - n[2]*math.sin(c)
+    ref = math.atan(y2 / x2)
+    l_ref = math.sqrt(x2**2 + y2**2)
+    if n[0] + n[1] == l_ref:
+        return l_ref, l_ref
+    a_cos = (-n[1]**2 + n[0]**2 + l_ref**2)/(2*l_ref*n[0]) % 1
+    a_in = math.acos(a_cos)
+    a = ref + a_in
+    x3 = n[0]*math.cos(a)
+    y3 = n[0]*math.sin(a)
+    b = math.atan((y2-y3)/(x2-x3))
+    return a, b
 
 
 def roulette_wheel_select(p):
@@ -152,8 +130,7 @@ def ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, 
     population = {}
     # each individual gets populated with a valid initial solution:
     for i in range(npop):
-        population[i] = {'position': [0.3585, 0.3585, 0.283, 1.86859, 0.4459161, 2.54976, 0.59183,
-                                      0.73718, 0.294315], 'cost': None}
+        population[i] = {'position': [0.51929811, 0.16306541, 0.333317], 'cost': None}
         # population[i] = {'position': [0.367413007842, 0.332208963082, 0.300378029076, 1.84284006553839, 0.4459161,
         #                               2.512234635, 0.553972645,
         #                               0.563326645, 0.513471569], 'cost': None}
@@ -164,9 +141,9 @@ def ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, 
     for i in range(npop):
         # add slight variance to entire population to allow for recombination
         # vary lengths by up to 0.5mm and angle up to 0.5 deg
-        variance = np.append(np.random.uniform(-0.0005, 0.0005, 3), np.random.uniform(-0.01, 0.01, 6))
+        variance = np.random.uniform(-0.0005, 0.0005, 3)
         if i == 0:
-            population[i]['position'] += np.zeros(9)
+            population[i]['position'] += np.zeros(3)
         else:
             population[i]['position'] += variance
         population[i]['cost'] = costfunc(population[i]['position'])
@@ -241,12 +218,15 @@ npop = 35
 beta = 1
 prop_children = 1
 num_children = int(np.round(prop_children * npop / 2) * 2)
-mu = 0.2
+mu = 0.3
 sigma = 0.1
 # store output of GA
 out = ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, sigma, beta)
 # output best solution:
 print(out[3])
+print(calcAngle(out[3]['position'], 0))
+print(calcAngle(out[3]['position'], math.radians(45)))
+print(calcAngle(out[3]['position'], math.radians(-60)))
 # output plot of T as a function of generation:
 plt.plot(out[2])
 plt.xlim(0, maxit)
