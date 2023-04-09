@@ -11,8 +11,7 @@ import copy
 def tor(n, d):
     """ we define tor to be a function that is capable of calculating the torque about the origin for any given arm
         that takes in n which contains the information about the current robot arm and d to be the position being checked
-        n as the lengths of links 1 through three in index 0-2 and the set of angles for each position contained
-        within indexes 3-8"""
+        n as the lengths of links 1 through three in index 0-2"""
     # check which scenario we are evaluating
     if d == 1:
         c = 0
@@ -108,12 +107,10 @@ def mutate(c, mu, sigma):
     return y
 
 
-def bounds(c, lenmin, lenmax, angmin, angmax):
+def bounds(c, lenmin, lenmax):
     """ensures that no value possible robot arm has invalid lengths or angles"""
     c['position'][0:3] = np.maximum(c['position'][0:3], lenmin)
     c['position'][0:3] = np.minimum(c['position'][0:3], lenmax)
-    c['position'][3:9] = np.maximum(c['position'][3:9], angmin)
-    c['position'][3:9] = np.minimum(c['position'][3:9], angmax)
 
 
 def sort(arr):
@@ -128,23 +125,20 @@ def sort(arr):
         return arr
 
 
-def ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, sigma, beta, int_pop):
+def ga(costfunc, lenmin, lenmax, maxit, npop, num_children, mu, sigma, beta, int_pop):
     """genetic algorithm definition"""
     # placeholder for every individual
     population = {}
     # each individual gets populated with a valid initial solution:
     for i in range(npop):
         population[i] = int_pop
-        # population[i] = {'position': [0.367413007842, 0.332208963082, 0.300378029076, 1.84284006553839, 0.4459161,
-        #                               2.512234635, 0.553972645,
-        #                               0.563326645, 0.513471569], 'cost': None}
 
     bestsol = copy.deepcopy(population)
     bestsol_cost = np.inf
 
     for i in range(npop):
         # add slight variance to entire population to allow for recombination
-        # vary lengths by up to 0.5mm and angle up to 0.5 deg
+        # vary lengths by up to 0.5mm
         variance = np.random.uniform(-0.0005, 0.0005, 3)
         if i == 0:
             population[i]['position'] += np.zeros(3)
@@ -178,8 +172,8 @@ def ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, 
             c1 = mutate(c1, mu, sigma)
             c2 = mutate(c2, mu, sigma)
 
-            bounds(c1, lenmin, lenmax, angmin, angmax)
-            bounds(c2, lenmin, lenmax, angmin, angmax)
+            bounds(c1, lenmin, lenmax)
+            bounds(c2, lenmin, lenmax)
 
             c1['cost'] = costfunc(c1['position'])
             # update lowest cost to account for new children
@@ -215,8 +209,6 @@ def ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, 
 costfunc = torque
 lenmin = 0.1
 lenmax = 0.6
-angmin = 0
-angmax = math.pi
 
 maxit = 1001
 npop = 35
@@ -227,11 +219,12 @@ mu = 0.3
 sigma = 0.1
 int_pop = {'position': [0.54042857, 0.15621532, 0.30564343], 'cost': None}
 # store output of GA
-out = ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, sigma, beta, int_pop)
+out = ga(costfunc, lenmin, lenmax, maxit, npop, num_children, mu, sigma, beta, int_pop)
 bestCost = out[3]
 it = 0
+#loop till reaching desired cost or # of times to iterate without improving
 while out[3]['cost'] >= 47.3 and it < 6:
-    out = ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, sigma, beta, out[3])
+    out = ga(costfunc, lenmin, lenmax, maxit, npop, num_children, mu, sigma, beta, out[3])
     if out[3]['cost'] < bestCost['cost']:
         bestCost = out[3]
         it = 0
@@ -250,4 +243,4 @@ plt.ylabel('T [Nm]')
 plt.title('Lowest T as a function of Generation')
 plt.grid(True)
 plt.show()
-# the lowest cost I've ever gotten with these settings was 5.09...
+# the lowest cost I've ever gotten with these settings was 47.59
