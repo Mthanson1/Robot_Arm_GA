@@ -25,6 +25,8 @@ def tor(n, d):
     if not checkvalid(n):
         return 10 ** 100  # assign large cost to signify bad result
     a, b = calcAngle(n, c)
+    if a == 4:
+        return 10 ** 100
     # apply general torque equation:
     g = 9.8
     return -g * (2 * math.cos(a) * n[0] ** 2 + 2 * math.cos(a) *
@@ -71,6 +73,8 @@ def calcAngle(n, c):
     x3 = n[0]*math.cos(a)
     y3 = n[0]*math.sin(a)
     b = math.atan((y2-y3)/(x2-x3))
+    if a < 0:
+        a = 4
     return a, b
 
 
@@ -124,13 +128,13 @@ def sort(arr):
         return arr
 
 
-def ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, sigma, beta):
+def ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, sigma, beta, int_pop):
     """genetic algorithm definition"""
     # placeholder for every individual
     population = {}
     # each individual gets populated with a valid initial solution:
     for i in range(npop):
-        population[i] = {'position': [0.51929811, 0.16306541, 0.333317], 'cost': None}
+        population[i] = int_pop
         # population[i] = {'position': [0.367413007842, 0.332208963082, 0.300378029076, 1.84284006553839, 0.4459161,
         #                               2.512234635, 0.553972645,
         #                               0.563326645, 0.513471569], 'cost': None}
@@ -203,6 +207,7 @@ def ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, 
     out = population
     Bestsol = bestsol
     bestcost = bestcost
+
     return (out, Bestsol, bestcost, bestsol_cost)
 
 
@@ -220,13 +225,23 @@ prop_children = 1
 num_children = int(np.round(prop_children * npop / 2) * 2)
 mu = 0.3
 sigma = 0.1
+int_pop = {'position': [0.54042857, 0.15621532, 0.30564343], 'cost': None}
 # store output of GA
-out = ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, sigma, beta)
+out = ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, sigma, beta, int_pop)
+bestCost = out[3]
+it = 0
+while out[3]['cost'] >= 47.3 and it < 6:
+    out = ga(costfunc, lenmin, lenmax, angmin, angmax, maxit, npop, num_children, mu, sigma, beta, out[3])
+    if out[3]['cost'] < bestCost['cost']:
+        bestCost = out[3]
+        it = 0
+    else:
+        it += 1
 # output best solution:
-print(out[3])
-print(calcAngle(out[3]['position'], 0))
-print(calcAngle(out[3]['position'], math.radians(45)))
-print(calcAngle(out[3]['position'], math.radians(-60)))
+print(bestCost)
+print(calcAngle(bestCost['position'], 0))
+print(calcAngle(bestCost['position'], math.radians(45)))
+print(calcAngle(bestCost['position'], math.radians(-60)))
 # output plot of T as a function of generation:
 plt.plot(out[2])
 plt.xlim(0, maxit)
