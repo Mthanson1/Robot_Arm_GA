@@ -66,13 +66,16 @@ def calcAngle(n, c):
     l_ref = math.sqrt(x2**2 + y2**2)
     if n[0] + n[1] == l_ref:
         return l_ref, l_ref
-    a_cos = (-n[1]**2 + n[0]**2 + l_ref**2)/(2*l_ref*n[0]) % 1
-    a_in = math.acos(a_cos)
-    a = ref + a_in
+    a_cos = (-n[1]**2 + n[0]**2 + l_ref**2)/(2*l_ref*n[0])
+    if abs(a_cos) > 1:
+        a = 4
+    else:
+        a_in = math.acos(a_cos)
+        a = ref + a_in
     x3 = n[0]*math.cos(a)
     y3 = n[0]*math.sin(a)
     b = math.atan((y2-y3)/(x2-x3))
-    if a < 0:
+    if a < 0 or a > math.pi:
         a = 4
     return a, b
 
@@ -208,7 +211,7 @@ def ga(costfunc, lenmin, lenmax, maxit, npop, num_children, mu, sigma, beta, int
 # define starting parameters: (feel free to modify)
 costfunc = torque
 lenmin = 0.1
-lenmax = 0.6
+lenmax = 1.5
 
 maxit = 1001
 npop = 35
@@ -218,12 +221,13 @@ num_children = int(np.round(prop_children * npop / 2) * 2)
 mu = 0.3
 sigma = 0.1
 int_pop = {'position': [0.54042857, 0.15621532, 0.30564343], 'cost': None}
+# int_pop = {'position': [0.907, 0.993, 0.281], 'cost': None}
 # store output of GA
 out = ga(costfunc, lenmin, lenmax, maxit, npop, num_children, mu, sigma, beta, int_pop)
 bestCost = out[3]
 it = 0
 #loop till reaching desired cost or # of times to iterate without improving
-while out[3]['cost'] >= 47.3 and it < 6:
+while out[3]['cost'] >= 40 and it < 6:
     out = ga(costfunc, lenmin, lenmax, maxit, npop, num_children, mu, sigma, beta, out[3])
     if out[3]['cost'] < bestCost['cost']:
         bestCost = out[3]
